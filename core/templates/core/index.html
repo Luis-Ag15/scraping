@@ -1,0 +1,161 @@
+{% extends "core/base.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <span class="title-emoji">🚀</span>
+        Buscar Empleos
+    </h1>
+    <p class="page-subtitle">Configura tu búsqueda y encuentra oportunidades laborales. </p>
+</div>
+
+<div class="grid-layout">
+    <!-- Search Form -->
+    <div class="card glass-card form-card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <span class="card-icon">⚙️</span>
+                Configurar Búsqueda
+            </h2>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% url 'core:run_search' %}" id="search-form">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="id_search_terms" class="form-label">
+                        🔤 {{ form.search_terms.label }}
+                    </label>
+                    {{ form.search_terms }}
+                    <span class="form-help">{{ form.search_terms.help_text }}</span>
+                    {% if form.search_terms.errors %}
+                    <span class="form-error">{{ form.search_terms.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="id_locations" class="form-label">
+                        📍 {{ form.locations.label }}
+                    </label>
+                    {{ form.locations }}
+                    <span class="form-help">{{ form.locations.help_text }}</span>
+                    {% if form.locations.errors %}
+                    <span class="form-error">{{ form.locations.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        🌐 {{ form.sites.label }}
+                    </label>
+                    <div class="checkbox-group">
+                        {% for checkbox in form.sites %}
+                        <label class="checkbox-label">
+                            {{ checkbox.tag }}
+                            <span class="checkbox-text">{{ checkbox.choice_label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% if form.sites.errors %}
+                    <span class="form-error">{{ form.sites.errors.0 }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="id_country" class="form-label">
+                            🌎 {{ form.country.label }}
+                        </label>
+                        {{ form.country }}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_results_wanted" class="form-label">
+                            📊 {{ form.results_wanted.label }}
+                        </label>
+                        {{ form.results_wanted }}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_hours_old" class="form-label">
+                            ⏰ {{ form.hours_old.label }}
+                        </label>
+                        {{ form.hours_old }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label checkbox-highlight" for="id_is_remote">
+                        {{ form.is_remote }}
+                        <span class="checkbox-text">🏠 {{ form.is_remote.label }}</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg" id="btn-search">
+                    <span class="btn-icon">🔍</span>
+                    <span class="btn-text">Iniciar Búsqueda</span>
+                    <span class="btn-loading" style="display:none;">
+                        <span class="spinner"></span> Buscando...
+                    </span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search History -->
+    <div class="card glass-card history-card">
+        <div class="card-header">
+            <h2 class="card-title">
+                <span class="card-icon">📋</span>
+                Historial de Búsquedas
+            </h2>
+        </div>
+        <div class="card-body">
+            {% if recent_searches %}
+            <div class="history-list">
+                {% for search in recent_searches %}
+                <a href="{% url 'core:search_detail' pk=search.pk %}" class="history-item">
+                    <div class="history-item-header">
+                        <span class="status-badge status-{{ search.status }}">
+                            {% if search.status == 'completed' %}✅{% elif search.status == 'running' %}⏳{% else %}❌{% endif %}
+                            {{ search.get_status_display }}
+                        </span>
+                        <span class="history-date">{{ search.created_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="history-terms">
+                        {% for term in search.get_search_terms_list %}
+                        <span class="tag">{{ term }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="history-meta">
+                        <span>📍 {{ search.get_locations_list|join:", " }}</span>
+                        <span>📊 {{ search.total_jobs_found }} empleos</span>
+                        <span>⏱️ {{ search.duration_seconds }}s</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">📭</span>
+                <p>No hay búsquedas previas</p>
+                <p class="empty-hint">Configura y ejecuta tu primera búsqueda</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('search-form').addEventListener('submit', function () {
+        const btn = document.getElementById('btn-search');
+        btn.querySelector('.btn-text').style.display = 'none';
+        btn.querySelector('.btn-icon').style.display = 'none';
+        btn.querySelector('.btn-loading').style.display = 'inline-flex';
+        btn.disabled = true;
+        btn.classList.add('btn-disabled');
+    });
+</script>
+{% endblock %}

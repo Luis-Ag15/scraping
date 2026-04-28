@@ -1,0 +1,217 @@
+{% extends "core/base.html" %}
+
+{% block title %}Resultados — Búsqueda #{{ search.pk }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-top">
+        <a href="{% url 'core:index' %}" class="btn btn-ghost">
+            ← Volver
+        </a>
+        <div class="page-actions">
+            <a href="{% url 'core:export_csv' pk=search.pk %}" class="btn btn-secondary" id="btn-export-csv">
+                📥 Exportar CSV
+            </a>
+            <form method="post" action="{% url 'core:delete_search' pk=search.pk %}" style="display:inline;" id="form-delete">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" id="btn-delete-search"
+                        onclick="return confirm('¿Eliminar esta búsqueda y todos sus resultados?')">
+                    🗑️ Eliminar
+                </button>
+            </form>
+        </div>
+    </div>
+    <h1 class="page-title">
+        <span class="title-emoji">📊</span>
+        Resultados de Búsqueda
+    </h1>
+    <p class="page-subtitle">
+        Búsqueda #{{ search.pk }} — {{ search.created_at|date:"d/m/Y H:i" }}
+        <span class="status-badge status-{{ search.status }}">
+            {% if search.status == 'completed' %}✅{% elif search.status == 'running' %}⏳{% else %}❌{% endif %}
+            {{ search.get_status_display }}
+        </span>
+    </p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card glass-card">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Empleos encontrados</div>
+    </div>
+    <div class="stat-card glass-card">
+        <div class="stat-value">{{ stats.companies }}</div>
+        <div class="stat-label">Empresas</div>
+    </div>
+    <div class="stat-card glass-card">
+        <div class="stat-value">{{ stats.locations }}</div>
+        <div class="stat-label">Ubicaciones</div>
+    </div>
+    <div class="stat-card glass-card">
+        <div class="stat-value">{{ search.duration_seconds }}s</div>
+        <div class="stat-label">Tiempo de búsqueda</div>
+    </div>
+</div>
+
+<!-- Search Info -->
+<div class="card glass-card search-info-card">
+    <div class="card-body">
+        <div class="search-info-grid">
+            <div class="search-info-item">
+                <span class="search-info-label">🔤 Términos:</span>
+                <div class="tag-list">
+                    {% for term in search.get_search_terms_list %}
+                    <span class="tag">{{ term }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="search-info-item">
+                <span class="search-info-label">📍 Ubicaciones:</span>
+                <div class="tag-list">
+                    {% for loc in search.get_locations_list %}
+                    <span class="tag tag-location">{{ loc }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="search-info-item">
+                <span class="search-info-label">🌐 Sitios:</span>
+                <div class="tag-list">
+                    {% for site in search.get_sites_list %}
+                    <span class="tag tag-site">{{ site }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if search.error_message %}
+<div class="card glass-card error-card">
+    <div class="card-body">
+        <h3>⚠️ Errores durante la búsqueda</h3>
+        <pre class="error-pre">{{ search.error_message }}</pre>
+    </div>
+</div>
+{% endif %}
+
+<!-- Results Table -->
+{% if jobs %}
+<div class="card glass-card table-card">
+    <div class="card-header">
+        <h2 class="card-title">
+            <span class="card-icon">📋</span>
+            Ofertas de Empleo
+        </h2>
+        <div class="table-controls">
+            <div class="search-input-wrapper">
+                <span class="search-input-icon">🔍</span>
+                <input type="text" id="table-filter" class="search-input"
+                       placeholder="Filtrar por título, empresa, ubicación...">
+            </div>
+        </div>
+    </div>
+    <div class="card-body table-responsive">
+        <table class="data-table" id="jobs-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-col="0">#</th>
+                    <th class="sortable" data-col="1">Sitio</th>
+                    <th class="sortable" data-col="2">Título</th>
+                    <th class="sortable" data-col="3">Empresa</th>
+                    <th class="sortable" data-col="4">Ubicación</th>
+                    <th class="sortable" data-col="5">Salario</th>
+                    <th class="sortable" data-col="6">Tipo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td class="cell-num">{{ forloop.counter }}</td>
+                    <td><span class="site-badge site-{{ job.site }}">{{ job.site }}</span></td>
+                    <td class="cell-title">{{ job.title }}</td>
+                    <td class="cell-company">{{ job.company }}</td>
+                    <td class="cell-location">{{ job.location }}</td>
+                    <td class="cell-salary">{{ job.get_salary_display }}</td>
+                    <td><span class="type-badge">{{ job.job_type|default:"—" }}</span></td>
+                    <td class="cell-actions">
+                        {% if job.job_url %}
+                        <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+                            Ver ↗
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer">
+        <span id="table-count">Mostrando {{ stats.total }} resultados</span>
+    </div>
+</div>
+{% else %}
+<div class="card glass-card">
+    <div class="card-body">
+        <div class="empty-state">
+            <span class="empty-icon">📭</span>
+            <p>No se encontraron empleos</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    // Client-side filtering
+    const filterInput = document.getElementById('table-filter');
+    const table = document.getElementById('jobs-table');
+    const countEl = document.getElementById('table-count');
+
+    if (filterInput && table) {
+        filterInput.addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            const rows = table.querySelectorAll('tbody tr');
+            let visible = 0;
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const match = text.includes(term);
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+
+            countEl.textContent = `Mostrando ${visible} de {{ stats.total }} resultados`;
+        });
+    }
+
+    // Sorting
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const col = parseInt(this.dataset.col);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const asc = !this.classList.contains('sort-asc');
+
+            document.querySelectorAll('.sortable').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+            this.classList.add(asc ? 'sort-asc' : 'sort-desc');
+
+            rows.sort((a, b) => {
+                const aVal = a.children[col]?.textContent.trim() || '';
+                const bVal = b.children[col]?.textContent.trim() || '';
+                const aNum = parseFloat(aVal);
+                const bNum = parseFloat(bVal);
+
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return asc ? aNum - bNum : bNum - aNum;
+                }
+                return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        });
+    });
+</script>
+{% endblock %}
